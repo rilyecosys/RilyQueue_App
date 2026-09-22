@@ -143,6 +143,82 @@ class Mission {
     );
   }
 
+  /// Maps the real backend /tasks JSON (NestJS TaskEntity) to Mission.
+  factory Mission.fromTaskJson(Map<String, dynamic> json) {
+    final price = (json['priceTotal'] as num?)?.toDouble() ?? 0.0;
+    final pickupLat = json['pickupLat']?.toString() ?? '';
+    final pickupLng = json['pickupLng']?.toString() ?? '';
+    final address = (pickupLat.isNotEmpty && pickupLng.isNotEmpty)
+        ? '$pickupLat, $pickupLng'
+        : 'Adresse non définie';
+
+    return Mission(
+      id: json['id'].toString(),
+      category: _mapBackendCategory(json['category'] as String? ?? 'QUEUE'),
+      address: address,
+      timeSlot: json['createdAt'] as String? ?? '',
+      note: json['description'] as String? ?? '',
+      status: statusFromTaskBackend(json['status'] as String? ?? 'REQUESTED'),
+      clientId: json['clientId']?.toString() ?? '',
+      agentId: json['agentId']?.toString(),
+      basePrice: price,
+      isExpress: false,
+      totalPrice: price,
+      ratingScore: null,
+      ratingComment: null,
+    );
+  }
+
+  /// Backend TaskStatus → MissionStatus Flutter
+  static MissionStatus statusFromTaskBackend(String value) {
+    switch (value.toUpperCase()) {
+      case 'REQUESTED':
+      case 'PAID':
+        return MissionStatus.created;
+      case 'ASSIGNED':
+        return MissionStatus.accepted;
+      case 'IN_PROGRESS':
+      case 'PROOF_SUBMITTED':
+        return MissionStatus.inProgress;
+      case 'COMPLETED':
+        return MissionStatus.completed;
+      case 'CANCELLED':
+      case 'DISPUTED':
+        return MissionStatus.cancelled;
+      case 'DRAFT':
+      default:
+        return MissionStatus.created;
+    }
+  }
+
+  /// MissionStatus Flutter → Backend TaskStatus string
+  static String statusToTaskBackend(MissionStatus status) {
+    switch (status) {
+      case MissionStatus.created:
+        return 'REQUESTED';
+      case MissionStatus.accepted:
+      case MissionStatus.onTheWay:
+        return 'ASSIGNED';
+      case MissionStatus.inProgress:
+        return 'IN_PROGRESS';
+      case MissionStatus.completed:
+        return 'COMPLETED';
+      case MissionStatus.cancelled:
+        return 'CANCELLED';
+    }
+  }
+
+  /// Backend category enum → label lisible
+  static String _mapBackendCategory(String backendCat) {
+    switch (backendCat.toUpperCase()) {
+      case 'QUEUE':        return "File d'attente";
+      case 'DEPOT':        return 'Dépôt de documents';
+      case 'RECUPERATION': return 'Récupération de documents';
+      case 'COURSE_URGENTE': return 'Course urgente';
+      default:             return backendCat;
+    }
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/service_category.dart';
-import '../services/mission_service.dart';
+import '../services/task_api_service.dart';
 import '../services/connectivity_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/rily_widgets.dart';
@@ -13,7 +13,7 @@ class CreateMissionScreen extends StatefulWidget {
 }
 
 class _CreateMissionScreenState extends State<CreateMissionScreen> {
-  final MissionService _ms = MissionService();
+  final TaskApiService _api = TaskApiService();
   final ConnectivityService _conn = ConnectivityService();
 
   // ── Wizard state ──────────────────────────────────────────────────────────
@@ -170,12 +170,16 @@ class _CreateMissionScreenState extends State<CreateMissionScreen> {
       final note = _noteCtrl.text.trim();
       final combined = note.isEmpty ? desc : '$desc\n\n$note';
 
-      final mission = await _ms.createMission(
-        category: _selectedCategory!.title,
-        address: _locationCtrl.text.trim(),
-        timeSlot: _formattedSlot,
-        note: combined,
-        isExpress: _isPrioritaire,
+      // MVP: coordonnées par défaut de Casablanca
+      // TODO: Remplacer par geocoding de _locationCtrl quand dispo
+      const double defaultLat = 33.5731;
+      const double defaultLng = -7.5898;
+
+      final mission = await _api.createTask(
+        categoryId: _selectedCategory!.id,
+        description: combined,
+        pickupLat: defaultLat,
+        pickupLng: defaultLng,
       );
       if (!mounted) return;
       Navigator.pushReplacementNamed(

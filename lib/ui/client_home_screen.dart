@@ -3,6 +3,7 @@ import '../models/mission.dart';
 import '../models/service_category.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/task_api_service.dart';
 import '../services/mission_service.dart';
 import '../services/connectivity_service.dart';
 import 'theme/app_theme.dart';
@@ -17,9 +18,13 @@ class ClientHomeScreen extends StatefulWidget {
 
 class _ClientHomeScreenState extends State<ClientHomeScreen> {
   final AuthService _auth = AuthService();
-  final MissionService _ms = MissionService();
+  final TaskApiService _taskApi = TaskApiService();
+  final MissionService _ms = MissionService(); // fallback local
   final ConnectivityService _conn = ConnectivityService();
   bool _isOffline = false;
+  List<Mission> _apiMissions = [];
+  bool _apiLoaded = false;
+  bool _apiError = false;
 
   @override
   void initState() {
@@ -27,16 +32,32 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     _conn.onConnectivityChanged
         .listen((c) => mounted ? setState(() => _isOffline = !c) : null);
     _isOffline = !_conn.isConnected;
+    _loadMissions();
+  }
+
+  Future<void> _loadMissions() async {
+    try {
+      final missions = await _taskApi.getClientMissions();
+      if (mounted) {
+        setState(() {
+          _apiMissions = missions;
+          _apiLoaded = true;
+          _apiError = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() { _apiLoaded = true; _apiError = true; });
+    }
   }
 
   void _openNewDossier({ServiceCategory? category}) async {
     await Navigator.pushNamed(context, '/createMission', arguments: category);
-    if (mounted) setState(() {});
+    if (mounted) _loadMissions(); // refresh depuis l'API après création
   }
 
   void _openDossier(Mission m) {
     Navigator.pushNamed(context, '/missionStatus', arguments: m)
-        .then((_) => mounted ? setState(() {}) : null);
+        .then((_) => mounted ? _loadMissions() : null);
   }
 
   @override
@@ -53,7 +74,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           body: Center(child: Text('Accès réservé aux clients.')));
     }
 
-    final missions = _ms.getClientMissions(user.id);
+    // Utilise les missions de l'API si dispo, sinon fallback local
+    final missions = _apiLoaded && !_apiError
+        ? _apiMissions
+        : _ms.getClientMissions(user.id);
+
     final active = missions
         .where((m) =>
             m.status != MissionStatus.completed &&
@@ -73,7 +98,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
           Expanded(
             child: RefreshIndicator(
               color: RilyColors.accent,
-              onRefresh: () async => setState(() {}),
+              onRefresh: () => _loadMissions(),
               child: CustomScrollView(
                 slivers: [
                   // ── App Bar ────────────────────────────────────────────────
