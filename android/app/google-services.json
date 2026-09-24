@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "155286452431",
+    "project_id": "rilygov2-941ee",
+    "storage_bucket": "rilygov2-941ee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:155286452431:android:e99770f0a5d41400055fba",
+        "android_client_info": {
+          "package_name": "com.example.rilygo_mobile_app_v2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAwjuI1ZrVDaCt0HlRmXZvhKizcMLz5UjQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

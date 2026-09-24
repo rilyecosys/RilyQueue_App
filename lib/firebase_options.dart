@@ -11,22 +11,30 @@ class DefaultFirebaseOptions {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
+        return android;
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
       case TargetPlatform.windows:
       case TargetPlatform.linux:
       case TargetPlatform.fuchsia:
-        return web;
+        return android;
     }
   }
 
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyAwjuI1ZrVDaCt0HlRmXZvhKizcMLz5UjQ',
+    appId: '1:155286452431:android:e99770f0a5d41400055fba',
+    messagingSenderId: '155286452431',
+    projectId: 'rilygov2-941ee',
+    storageBucket: 'rilygov2-941ee.firebasestorage.app',
+  );
+
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAEcXDfMeiTmQpsNHGST1Rlvr7BUboBLtM',
-    authDomain: 'rilyqueue.firebaseapp.com',
-    projectId: 'rilyqueue',
-    storageBucket: 'rilyqueue.firebasestorage.app',
-    messagingSenderId: '685704596686',
-    appId: '1:685704596686:web:d46c9be211c825d51a549f',
-    measurementId: 'G-FX1FGXDBP9',
+    apiKey: 'AIzaSyAwjuI1ZrVDaCt0HlRmXZvhKizcMLz5UjQ',
+    authDomain: 'rilygov2-941ee.firebaseapp.com',
+    projectId: 'rilygov2-941ee',
+    storageBucket: 'rilygov2-941ee.firebasestorage.app',
+    messagingSenderId: '155286452431',
+    appId: '1:155286452431:android:e99770f0a5d41400055fba',
   );
 }
