@@ -73,6 +73,7 @@ class AuthService {
     final idToken = await credential.user!.getIdToken();
     final response = await ApiClient().post('/auth/firebase-verify', {
       'idToken': idToken,
+      'phone': phone,
     });
 
     final user = User.fromJson(response['user'] as Map<String, dynamic>);
