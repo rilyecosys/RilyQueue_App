@@ -43,10 +43,27 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
+  String get _formattedPhone {
+    String p = _phoneController.text.trim().replaceAll(RegExp(r'[^\d+]'), '');
+    if (p.startsWith('+2120')) {
+      p = '+212${p.substring(5)}';
+    } else if (p.startsWith('2120')) {
+      p = '+212${p.substring(4)}';
+    } else if (p.startsWith('212')) {
+      p = '+$p';
+    } else if (p.startsWith('0')) {
+      p = '+212${p.substring(1)}';
+    } else if (!p.startsWith('+')) {
+      p = '+212$p';
+    }
+    debugPrint('RilyQueue Phone Auth Target: $p');
+    return p;
+  }
+
   Future<void> _sendOtp() async {
-    final phone = _phoneController.text.trim();
-    if (phone.isEmpty) {
-      _showSnack('Veuillez saisir votre numéro de téléphone.', isError: true);
+    final phone = _formattedPhone;
+    if (phone.length < 12) {
+      _showSnack('Numéro de téléphone incomplet (ex: 06 12 34 56 78)', isError: true);
       return;
     }
     setState(() => _isLoading = true);
@@ -54,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen>
       await _authService.sendOtp(phone);
       if (!mounted) return;
       setState(() => _otpSent = true);
-      _showSnack('Code envoyé — utilisez 1234 pour tester.');
+      _showSnack('Code envoyé au $phone.');
     } catch (e) {
       if (!mounted) return;
       _showSnack('Erreur : $e', isError: true);
@@ -72,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _isLoading = true);
     try {
       final user = await _authService.verifyOtp(
-        phone: _phoneController.text.trim(),
+        phone: _formattedPhone,
         otp: otp,
       );
       if (!mounted) return;
@@ -82,7 +99,8 @@ class _LoginScreenState extends State<LoginScreen>
       );
     } catch (e) {
       if (!mounted) return;
-      _showSnack('Code invalide. Veuillez réessayer.', isError: true);
+      debugPrint('VERIFY OTP FAILED: $e');
+      _showSnack('Erreur : $e', isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -211,7 +229,7 @@ class _LoginScreenState extends State<LoginScreen>
                           letterSpacing: -0.5)),
                   const SizedBox(height: 8),
                   Text(
-                    'Un code à 4 chiffres a été envoyé\nau ${_phoneController.text}',
+                    'Un code a été envoyé\nau $_formattedPhone',
                     style: const TextStyle(
                         fontSize: 15,
                         color: RilyColors.textSecondary,
@@ -232,8 +250,8 @@ class _LoginScreenState extends State<LoginScreen>
                   const SizedBox(height: 14),
                   RilyTextField(
                     controller: _otpController,
-                    label: 'Code à 4 chiffres',
-                    hint: '1234',
+                    label: 'Code de vérification (6 chiffres)',
+                    hint: '123456',
                     keyboardType: TextInputType.number,
                     enabled: !_isLoading,
                   ),

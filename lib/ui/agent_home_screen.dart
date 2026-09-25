@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/mission_service.dart';
+import '../services/task_api_service.dart';
 import '../models/mission.dart';
 import 'theme/app_theme.dart';
 import 'widgets/rily_widgets.dart';
@@ -14,7 +15,41 @@ class AgentHomeScreen extends StatefulWidget {
 
 class _AgentHomeScreenState extends State<AgentHomeScreen> {
   final AuthService _auth = AuthService();
+  final TaskApiService _taskApi = TaskApiService();
   final MissionService _ms = MissionService();
+
+  List<Mission> _availableMissions = [];
+  List<Mission> _myMissions = [];
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final available = await _taskApi.getAvailableMissions();
+      final my = await _taskApi.getAgentMissions();
+      if (mounted) {
+        setState(() {
+          _availableMissions = available;
+          _myMissions = my;
+          _loaded = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        final user = _auth.currentUser;
+        setState(() {
+          _availableMissions = _ms.getAvailableMissions();
+          _myMissions = user != null ? _ms.getAgentMissions(user.id) : [];
+          _loaded = true;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +62,8 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
       return const Scaffold(body: SizedBox.shrink());
     }
 
-    final available = _ms.getAvailableMissions().length;
-    final myMissions = _ms.getAgentMissions(user.id);
+    final available = _loaded ? _availableMissions.length : _ms.getAvailableMissions().length;
+    final myMissions = _loaded ? _myMissions : _ms.getAgentMissions(user.id);
     final inProgress = myMissions
         .where((m) =>
             m.status == MissionStatus.accepted ||
@@ -41,7 +76,10 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: CustomScrollView(
+        child: RefreshIndicator(
+          onRefresh: _loadData,
+          color: RilyColors.accent,
+          child: CustomScrollView(
           slivers: [
             SliverAppBar(
               floating: true,
@@ -119,7 +157,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                   // ── CTA principal ──
                   GestureDetector(
                     onTap: () => Navigator.pushNamed(context, '/agentMissions')
-                        .then((_) => setState(() {})),
+                        .then((_) => _loadData()),
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(22),
@@ -204,7 +242,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                                   context,
                                   '/missionDetail',
                                   arguments: m,
-                                ).then((_) => setState(() {})),
+                                ).then((_) => _loadData()),
                               ),
                             )),
                     const SizedBox(height: 16),
@@ -236,6 +274,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

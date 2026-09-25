@@ -3,6 +3,7 @@ import '../models/mission.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/mission_service.dart';
+import '../services/task_api_service.dart';
 import '../services/connectivity_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/rily_widgets.dart';
@@ -17,12 +18,17 @@ class AgentMissionList extends StatefulWidget {
 class _AgentMissionListState extends State<AgentMissionList>
     with SingleTickerProviderStateMixin {
   final MissionService _ms = MissionService();
+  final TaskApiService _taskApi = TaskApiService();
   final AuthService _auth = AuthService();
   final ConnectivityService _conn = ConnectivityService();
 
   late TabController _tabCtrl;
   bool _isOffline = false;
   String? _acceptingId;
+
+  List<Mission> _availableMissions = [];
+  List<Mission> _myMissions = [];
+  bool _loaded = false;
 
   @override
   void initState() {
@@ -32,6 +38,30 @@ class _AgentMissionListState extends State<AgentMissionList>
     _conn.onConnectivityChanged.listen((c) {
       if (mounted) setState(() => _isOffline = !c);
     });
+    _loadMissions();
+  }
+
+  Future<void> _loadMissions() async {
+    try {
+      final available = await _taskApi.getAvailableMissions();
+      final my = await _taskApi.getAgentMissions();
+      if (mounted) {
+        setState(() {
+          _availableMissions = available;
+          _myMissions = my;
+          _loaded = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        final user = _auth.currentUser;
+        setState(() {
+          _availableMissions = _ms.getAvailableMissions();
+          _myMissions = user != null ? _ms.getAgentMissions(user.id) : [];
+          _loaded = true;
+        });
+      }
+    }
   }
 
   @override
@@ -44,15 +74,23 @@ class _AgentMissionListState extends State<AgentMissionList>
     if (_acceptingId != null) return;
     setState(() => _acceptingId = missionId);
     try {
-      await _ms.acceptMission(missionId);
+      await _taskApi.acceptTask(missionId);
+      await _loadMissions();
       if (!mounted) return;
-      setState(() {});
       showSuccessSnack(context, 'Mission acceptée !');
       // Switcher sur l'onglet "Mes missions"
       _tabCtrl.animateTo(1);
     } catch (e) {
-      if (!mounted) return;
-      showErrorSnack(context, e);
+      try {
+        await _ms.acceptMission(missionId);
+        await _loadMissions();
+        if (!mounted) return;
+        showSuccessSnack(context, 'Mission acceptée !');
+        _tabCtrl.animateTo(1);
+      } catch (err) {
+        if (!mounted) return;
+        showErrorSnack(context, e);
+      }
     } finally {
       if (mounted) setState(() => _acceptingId = null);
     }
@@ -60,7 +98,7 @@ class _AgentMissionListState extends State<AgentMissionList>
 
   void _goDetail(Mission m) {
     Navigator.pushNamed(context, '/missionDetail', arguments: m)
-        .then((_) => setState(() {}));
+        .then((_) => _loadMissions());
   }
 
   @override
@@ -80,15 +118,15 @@ class _AgentMissionListState extends State<AgentMissionList>
       );
     }
 
-    final available = _ms.getAvailableMissions();
-    final myMissions = _ms.getAgentMissions(user.id);
+    final available = _loaded ? _availableMissions : _ms.getAvailableMissions();
+    final myMissions = _loaded ? _myMissions : _ms.getAgentMissions(user.id);
 
     return Scaffold(
       body: Column(
         children: [
           ConnectivityBanner(
             isOffline: _isOffline,
-            onRetry: () => setState(() {}),
+            onRetry: _loadMissions,
           ),
           Expanded(
             child: NestedScrollView(
@@ -106,7 +144,7 @@ class _AgentMissionListState extends State<AgentMissionList>
                     IconButton(
                       icon: const Icon(Icons.refresh_rounded,
                           color: RilyColors.textSecondary),
-                      onPressed: () => setState(() {}),
+                      onPressed: _loadMissions,
                     ),
                   ],
                   bottom: TabBar(
@@ -136,7 +174,7 @@ class _AgentMissionListState extends State<AgentMissionList>
                   // ── Tab 1 : disponibles ──
                   RefreshIndicator(
                     color: RilyColors.accent,
-                    onRefresh: () async => setState(() {}),
+                    onRefresh: _loadMissions,
                     child: available.isEmpty
                         ? const EmptyState(
                             emoji: '🔍',
@@ -164,7 +202,7 @@ class _AgentMissionListState extends State<AgentMissionList>
                   // ── Tab 2 : mes missions ──
                   RefreshIndicator(
                     color: RilyColors.accent,
-                    onRefresh: () async => setState(() {}),
+                    onRefresh: _loadMissions,
                     child: myMissions.isEmpty
                         ? const EmptyState(
                             emoji: '📋',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/mission.dart';
 import '../services/mission_service.dart';
+import '../services/task_api_service.dart';
 import '../services/proof_upload_service.dart';
 import '../services/connectivity_service.dart';
 import 'theme/app_theme.dart';
@@ -16,10 +17,12 @@ class AgentMissionDetail extends StatefulWidget {
 
 class _AgentMissionDetailState extends State<AgentMissionDetail> {
   final MissionService _ms = MissionService();
+  final TaskApiService _taskApi = TaskApiService();
   final ConnectivityService _conn = ConnectivityService();
   final ProofUploadService _uploader = ProofUploadService();
   final TextEditingController _proofCtrl = TextEditingController();
 
+  late Mission _currentMission;
   bool _isOffline = false;
   bool _isUpdating = false;
   bool _isCancelling = false;
@@ -34,6 +37,7 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
   @override
   void initState() {
     super.initState();
+    _currentMission = widget.mission;
     _isOffline = !_conn.isConnected;
     _conn.onConnectivityChanged
         .listen((c) => mounted ? setState(() => _isOffline = !c) : null);
@@ -48,10 +52,7 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
     super.dispose();
   }
 
-  Mission get _m => _ms.missions.firstWhere(
-        (m) => m.id == widget.mission.id,
-        orElse: () => widget.mission,
-      );
+  Mission get _m => _currentMission;
 
   // ─── Progression ─────────────────────────────────────────────────────────
 
@@ -59,13 +60,29 @@ class _AgentMissionDetailState extends State<AgentMissionDetail> {
     if (_anyBusy) return;
     setState(() => _isUpdating = true);
     try {
-      await _ms.updateMissionStatus(_m.id, s);
-      if (!mounted) return;
-      setState(() {});
-      showSuccessSnack(context, msg);
+      final updated = await _taskApi.updateStatus(_currentMission.id, s);
+      if (mounted) {
+        setState(() {
+          _currentMission = updated;
+        });
+        showSuccessSnack(context, msg);
+      }
     } catch (e) {
-      if (!mounted) return;
-      showErrorSnack(context, e);
+      try {
+        await _ms.updateMissionStatus(_currentMission.id, s);
+        if (mounted) {
+          setState(() {
+            _currentMission = _ms.missions.firstWhere(
+              (m) => m.id == widget.mission.id,
+              orElse: () => _currentMission.copyWith(status: s),
+            );
+          });
+          showSuccessSnack(context, msg);
+        }
+      } catch (err) {
+        if (!mounted) return;
+        showErrorSnack(context, e);
+      }
     } finally {
       if (mounted) setState(() => _isUpdating = false);
     }

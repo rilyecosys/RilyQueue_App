@@ -42,7 +42,7 @@ class TaskApiService {
   // ── Agent : ses missions assignées ────────────────────────────────────────
 
   Future<List<Mission>> getAgentMissions() async {
-    final data = await _api.get('/tasks');
+    final data = await _api.get('/tasks?role=agent');
     final list = _asList(data);
     return list
         .map((e) => Mission.fromTaskJson(e as Map<String, dynamic>))
