@@ -101,6 +101,22 @@ class TaskApiService {
     return Mission.fromTaskJson(data);
   }
 
+  // ── Évaluer une mission (Rating) ──────────────────────────────────────────
+
+  Future<void> rateMission({
+    required String taskId,
+    required String ratedId,
+    required int score,
+    String? comment,
+  }) async {
+    await _api.post('/ratings', {
+      'taskId': taskId,
+      'ratedId': ratedId,
+      'score': score,
+      if (comment != null && comment.isNotEmpty) 'comment': comment,
+    });
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   List<dynamic> _asList(dynamic data) {

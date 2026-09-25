@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/mission.dart';
 import '../services/mission_service.dart';
+import '../services/task_api_service.dart';
 import '../services/connectivity_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/rily_widgets.dart';
@@ -16,6 +17,7 @@ class MissionStatusScreen extends StatefulWidget {
 
 class _MissionStatusScreenState extends State<MissionStatusScreen> {
   final MissionService _ms = MissionService();
+  final TaskApiService _taskApi = TaskApiService();
   final ConnectivityService _conn = ConnectivityService();
 
   bool _isOffline = false;
@@ -98,16 +100,28 @@ class _MissionStatusScreenState extends State<MissionStatusScreen> {
     }
     setState(() => _isRating = true);
     try {
+      final comment = _ratingCommentCtrl.text.trim().isEmpty
+          ? null
+          : _ratingCommentCtrl.text.trim();
+
+      if (_m.agentId != null && _m.agentId!.isNotEmpty) {
+        await _taskApi
+            .rateMission(
+              taskId: _m.id,
+              ratedId: _m.agentId!,
+              score: _ratingScore,
+              comment: comment,
+            )
+            .catchError((_) {});
+      }
       await _ms.rateMission(
         missionId: _m.id,
         score: _ratingScore,
-        comment: _ratingCommentCtrl.text.trim().isEmpty
-            ? null
-            : _ratingCommentCtrl.text.trim(),
+        comment: comment,
       );
       if (!mounted) return;
       setState(() {});
-      showSuccessSnack(context, 'Merci pour ton avis !');
+      showSuccessSnack(context, 'Merci pour votre avis !');
     } catch (e) {
       if (!mounted) return;
       showErrorSnack(context, e);
